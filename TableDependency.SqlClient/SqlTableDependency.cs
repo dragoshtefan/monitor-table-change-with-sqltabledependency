@@ -104,6 +104,7 @@ namespace TableDependency.SqlClient
         public override event ErrorEventHandler OnError;
 
         /// <summary>
+        
         /// Occurs when the table content has been changed with an update, insert or delete operation.
         /// </summary>
         public override event ChangedEventHandler<T> OnChanged;
@@ -358,7 +359,7 @@ namespace TableDependency.SqlClient
         protected override string GetBaseObjectsNamingConvention()
         {
             var name = $"{_schemaName}_{_tableName}";
-            return $"{name}_{Guid.NewGuid()}";
+            return $"{name}_STDbyModex";
         }
 
         protected override void DropDatabaseObjects()
@@ -914,7 +915,7 @@ namespace TableDependency.SqlClient
             {
                 throw new InvalidConnectionStringException(_connectionString, exception);
             }
-
+                        
             using (var sqlConnection = new SqlConnection(sqlConnectionStringBuilder.ConnectionString))
             {
                 try
