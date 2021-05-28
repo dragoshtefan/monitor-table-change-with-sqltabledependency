@@ -96,10 +96,10 @@ namespace TableDependency.SqlClient.Base.Messages
                 throw new MessageMisalignedException($"Received {message.MessageType} message while current status is {MessagesBagStatus.Ready}.");
             }
 
-            if (_processableMessages.Contains(message.MessageType) == false)
-            {
-                throw new MessageMisalignedException($"Queue containing a message type not expected [{message.MessageType}].");
-            }
+            // if (_processableMessages.Contains(message.MessageType) == false)
+            // {
+            //     throw new MessageMisalignedException($"Queue containing a message type not expected [{message.MessageType}].");
+            // }
 
             this.Messages.Add(message);
 

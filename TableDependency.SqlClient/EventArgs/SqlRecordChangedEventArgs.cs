@@ -38,11 +38,11 @@ using TableDependency.SqlClient.Extensions;
 
 namespace TableDependency.SqlClient.EventArgs
 {
-    public sealed class SqlRecordChangedEventArgs<T> : RecordChangedEventArgs<T> where T : class, new()
+    public sealed class SqlRecordChangedEventArgs : RecordChangedEventArgs
     {
         public SqlRecordChangedEventArgs(
             MessagesBag messagesBag,
-            IModelToTableMapper<T> mapper,
+            // IModelToTableMapper<T> mapper,
             IEnumerable<TableColumnInfo> userInterestedColumns,
             string server,
             string database,
@@ -50,7 +50,8 @@ namespace TableDependency.SqlClient.EventArgs
             CultureInfo cultureInfo,
             bool includeOldValues) : base(
                 messagesBag,
-                mapper,
+                // mapper,
+
                 userInterestedColumns,
                 server,
                 database,

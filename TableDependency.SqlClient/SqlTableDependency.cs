@@ -55,7 +55,7 @@ namespace TableDependency.SqlClient
     /// <summary>
     /// SqlTableDependency class: monitor SQL Server table record changes and notify it.
     /// </summary>
-    public class SqlTableDependency<T> : TableDependency<T> where T : class, new()
+    public class SqlTableDependency : TableDependencyType
     {
         #region Private variables
 
@@ -107,7 +107,7 @@ namespace TableDependency.SqlClient
         
         /// Occurs when the table content has been changed with an update, insert or delete operation.
         /// </summary>
-        public override event ChangedEventHandler<T> OnChanged;
+        public override event ChangedEventHandler OnChanged;
 
         /// <summary>
         /// Occurs when an status changes happen.
@@ -133,13 +133,14 @@ namespace TableDependency.SqlClient
         public SqlTableDependency(
             string connectionString,
             string tableName = null,
+            string key = "Id",
             string schemaName = null,
-            IModelToTableMapper<T> mapper = null,
-            IUpdateOfModel<T> updateOf = null,
+            // IModelToTableMapper<T> mapper = null,
+            // IUpdateOfModel<T> updateOf = null,
             ITableDependencyFilter filter = null,
             DmlTriggerType notifyOn = DmlTriggerType.All,
             bool executeUserPermissionCheck = true,
-            bool includeOldValues = false) : base(connectionString, tableName, schemaName, mapper, updateOf, filter, notifyOn, executeUserPermissionCheck)
+            bool includeOldValues = false) : base(connectionString, key, tableName, schemaName, filter, notifyOn, executeUserPermissionCheck)
         {
             this.IncludeOldValues = includeOldValues;
         }
@@ -168,8 +169,15 @@ namespace TableDependency.SqlClient
 
             this.NotifyListenersAboutStatus(onStatusChangedSubscribedList, TableDependencyStatus.Starting);
 
-            _disposed = false;
-            _processableMessages = this.CreateDatabaseObjects(timeOut, watchDogTimeOut);
+            // _disposed = false;
+            // if (this.CheckIfDatabaseObjectExists())
+            // {
+            //     Console.WriteLine("already created database objects with naming : " + _dataBaseObjectsNamingConvention);
+            // } 
+            // else 
+            // {
+            //     _processableMessages = this.CreateDatabaseObjects(timeOut, watchDogTimeOut);
+            // }
             _cancellationTokenSource = new CancellationTokenSource();
 
             _task = Task.Factory.StartNew(() =>
@@ -213,11 +221,10 @@ namespace TableDependency.SqlClient
             return stringBuilder.ToString();
         }
 
-        protected override RecordChangedEventArgs<T> GetRecordChangedEventArgs(MessagesBag messagesBag)
+        protected override RecordChangedEventArgs GetRecordChangedEventArgs(MessagesBag messagesBag)
         {
-            return new SqlRecordChangedEventArgs<T>(
+            return new SqlRecordChangedEventArgs(
                 messagesBag,
-                _mapper,
                 _userInterestedColumns,
                 _server,
                 _database,
@@ -244,9 +251,9 @@ namespace TableDependency.SqlClient
             {
                 return tableName.Replace("[", string.Empty).Replace("]", string.Empty);
             }
-
-            var tableNameFromDataAnnotation = this.GetTableNameFromDataAnnotation();
-            return !string.IsNullOrWhiteSpace(tableNameFromDataAnnotation) ? tableNameFromDataAnnotation : typeof(T).Name;
+            return "";
+            // var tableNameFromDataAnnotation = this.GetTableNameFromDataAnnotation();
+            // return !string.IsNullOrWhiteSpace(tableNameFromDataAnnotation) ? tableNameFromDataAnnotation : typeof(T).Name;
         }
 
         protected override string GetSchemaName(string schemaName)
@@ -255,9 +262,7 @@ namespace TableDependency.SqlClient
             {
                 return schemaName.Replace("[", string.Empty).Replace("]", string.Empty);
             }
-
-            var schemaNameFromDataAnnotation = this.GetSchemaNameFromDataAnnotation();
-            return !string.IsNullOrWhiteSpace(schemaNameFromDataAnnotation) ? schemaNameFromDataAnnotation : "dbo";
+            return "dbo";
         }
 
         protected virtual SqlServerVersion GetSqlServerVersion()
@@ -337,7 +342,7 @@ namespace TableDependency.SqlClient
             return result;
         }
 
-        protected override IList<string> CreateDatabaseObjects(int timeOut, int watchDogTimeOut)
+        public override IList<string> CreateDatabaseObjects()
         {
             IList<string> processableMessages;
 
@@ -346,7 +351,7 @@ namespace TableDependency.SqlClient
             if (this.CheckIfDatabaseObjectExists() == false)
             {
                 var columnsForUpdateOf = _updateOf != null ? string.Join(" OR ", _updateOf.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.CurrentCultureIgnoreCase).Select(c => $"UPDATE([{c}])").ToList()) : null;
-                processableMessages = this.CreateSqlServerDatabaseObjects(interestedColumns, columnsForUpdateOf, watchDogTimeOut);
+                processableMessages = this.CreateSqlServerDatabaseObjects(interestedColumns, columnsForUpdateOf);
             }
             else
             {
@@ -430,7 +435,7 @@ namespace TableDependency.SqlClient
             return scriptForInsertInTableVariable;
         }
 
-        protected virtual IList<string> CreateSqlServerDatabaseObjects(IEnumerable<TableColumnInfo> userInterestedColumns, string columnsForUpdateOf, int watchDogTimeOut)
+        protected virtual IList<string> CreateSqlServerDatabaseObjects(IEnumerable<TableColumnInfo> userInterestedColumns, string columnsForUpdateOf)
         {
             var processableMessages = new List<string>();
             var tableColumns = userInterestedColumns as IList<TableColumnInfo> ?? userInterestedColumns.ToList();
@@ -574,9 +579,9 @@ namespace TableDependency.SqlClient
                     sqlCommand.ExecuteNonQuery();
 
                     // Run the watch-dog
-                    sqlCommand.CommandText = $"BEGIN CONVERSATION TIMER ('{this.ConversationHandle.ToString().ToUpper()}') TIMEOUT = " + watchDogTimeOut + ";";
-                    sqlCommand.ExecuteNonQuery();
-                    this.WriteTraceMessage(TraceLevel.Verbose, "Watch dog started.");
+                    // sqlCommand.CommandText = $"BEGIN CONVERSATION TIMER ('{this.ConversationHandle.ToString().ToUpper()}') TIMEOUT = " + watchDogTimeOut + ";";
+                    // sqlCommand.ExecuteNonQuery();
+                    // this.WriteTraceMessage(TraceLevel.Verbose, "Watch dog started.");
 
                     // Persist all objects
                     transaction.Commit();
@@ -903,8 +908,8 @@ namespace TableDependency.SqlClient
 
         protected override void CheckIfConnectionStringIsValid()
         {
-            if (string.IsNullOrWhiteSpace(_connectionString)) throw new ArgumentNullException(nameof(_connectionString));
-
+            if (string.IsNullOrWhiteSpace(_connectionString)) 
+                return;
             SqlConnectionStringBuilder sqlConnectionStringBuilder;
 
             try
@@ -951,17 +956,17 @@ namespace TableDependency.SqlClient
             {
                 // Ok
             }
-            else
-            {
-                foreach (var permission in Enum.GetValues(typeof(SqlServerRequiredPermission)))
-                {
-                    var permissionToCheck = EnumUtil.GetDescriptionFromEnumValue((SqlServerRequiredPermission)permission);
-                    if (privilegesTable.Rows.All(r => !string.Equals(r.PermissionType, permissionToCheck, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        throw new UserWithMissingPermissionException(permissionToCheck);
-                    }
-                }
-            }
+            // else
+            // {
+            //     foreach (var permission in Enum.GetValues(typeof(SqlServerRequiredPermission)))
+            //     {
+            //         var permissionToCheck = EnumUtil.GetDescriptionFromEnumValue((SqlServerRequiredPermission)permission);
+            //         if (privilegesTable.Rows.All(r => !string.Equals(r.PermissionType, permissionToCheck, StringComparison.OrdinalIgnoreCase)))
+            //         {
+            //             throw new UserWithMissingPermissionException(permissionToCheck);
+            //         }
+            //     }
+            // }
         }
 
         protected virtual void CheckIfServiceBrokerIsEnabled()
@@ -999,12 +1004,11 @@ namespace TableDependency.SqlClient
             int timeOutWatchDog)
         {
             this.WriteTraceMessage(TraceLevel.Verbose, "Get in WaitForNotifications.");
-
+                
             var messagesBag = this.CreateMessagesBag(this.Encoding, _processableMessages);
             var messageNumber = _userInterestedColumns.Count() * (this.IncludeOldValues ? 2 : 1) + 2;
 
             var waitForSqlScript =
-                $"BEGIN CONVERSATION TIMER ('{this.ConversationHandle.ToString().ToUpper()}') TIMEOUT = " + timeOutWatchDog + ";" +
                 $"WAITFOR (RECEIVE TOP({messageNumber}) [message_type_name], [message_body] FROM [{_schemaName}].[{_dataBaseObjectsNamingConvention}_Receiver]), TIMEOUT {timeOut * 1000};";
 
             this.NotifyListenersAboutStatus(onStatusChangedSubscribedList, TableDependencyStatus.Started);

@@ -62,13 +62,10 @@ namespace TableDependency.SqlClient.Base.Abstracts
         string SchemaName { get; }
 
         #endregion
-    }
 
-    public interface ITableDependency<T> : ITableDependency where T : class, new()
-    {
         #region Events
 
-        event ChangedEventHandler<T> OnChanged;
+        event ChangedEventHandler OnChanged;
 
         #endregion
     }

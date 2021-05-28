@@ -38,7 +38,7 @@ using TableDependency.SqlClient.Base.Utilities;
 
 namespace TableDependency.SqlClient.Base.EventArgs
 {
-    public class RecordChangedEventArgs<T> : BaseEventArgs where T : class, new()
+    public class RecordChangedEventArgs : BaseEventArgs
     {
         #region Instance variables
 
@@ -50,8 +50,8 @@ namespace TableDependency.SqlClient.Base.EventArgs
 
         #region Properties
 
-        public T Entity { get; protected set; }
-        public T EntityOldValues { get; protected set; }
+        // public T Entity { get; protected set; }
+        // public T EntityOldValues { get; protected set; }
         public ChangeType ChangeType { get; protected set; }
 
         #endregion
@@ -60,7 +60,7 @@ namespace TableDependency.SqlClient.Base.EventArgs
 
         public RecordChangedEventArgs(
             MessagesBag messagesBag,
-            IModelToTableMapper<T> mapper,
+            // IModelToTableMapper<T> mapper,
             IEnumerable<TableColumnInfo> userInterestedColumns,
             string server,
             string database,
@@ -69,20 +69,20 @@ namespace TableDependency.SqlClient.Base.EventArgs
             bool includeOldValues = false) : base(server, database, sender, cultureInfo)
         {
             this.MessagesBag = messagesBag;
-            this.EntityPropertiesInfo = ModelUtil.GetModelPropertiesInfo<T>();
+            // this.EntityPropertiesInfo = ModelUtil.GetModelPropertiesInfo<T>();
             this.UserInterestedColumns = userInterestedColumns;
 
-            this.ChangeType = messagesBag.MessageType;
-            this.Entity = this.MaterializeEntity(messagesBag.Messages.Where(m => !m.IsOldValue).ToList(), mapper);
+            this.ChangeType = messagesBag.MessageType;  
+            // this.Entity = this.MaterializeEntity(messagesBag.Messages.Where(m => !m.IsOldValue).ToList(), mapper);
 
-            if (includeOldValues && this.ChangeType == ChangeType.Update)
-            {
-                this.EntityOldValues = this.MaterializeEntity(messagesBag.Messages.Where(m => m.IsOldValue).ToList(), mapper);
-            }
-            else
-            {
-                this.EntityOldValues = default(T);
-            }
+            // if (includeOldValues && this.ChangeType == ChangeType.Update)
+            // {
+            //     this.EntityOldValues = this.MaterializeEntity(messagesBag.Messages.Where(m => m.IsOldValue).ToList(), mapper);
+            // }
+            // else
+            // {
+            //     this.EntityOldValues = default(T);
+            // }
         }
 
         #endregion
@@ -93,6 +93,16 @@ namespace TableDependency.SqlClient.Base.EventArgs
         {
             var stringValue = Convert.ToString(this.MessagesBag.Encoding.GetString(message), base.CultureInfo);
             return this.GetValueObject(propertyInfo, stringValue);
+        }
+
+        public Dictionary<string, Object> GetValuePairs()
+        {
+            Dictionary<string, Object> result = new Dictionary<string, Object>();
+            foreach (Message prop in MessagesBag.Messages)
+            {
+                result.Add(prop.Recipient, System.Text.Encoding.Default.GetString(prop.Body).Replace("\0", String.Empty));
+            }
+            return result;
         }
 
         #endregion
@@ -180,26 +190,27 @@ namespace TableDependency.SqlClient.Base.EventArgs
             return this.UserInterestedColumns.First(uic => string.Equals(uic.Name, columnName, StringComparison.CurrentCultureIgnoreCase));
         }
 
-        protected virtual T MaterializeEntity(List<Message> messages, IModelToTableMapper<T> mapper)
-        {
-            var entity = new T();
+        // protected virtual T MaterializeEntity(List<Message> messages, IModelToTableMapper<T> mapper)
+        // {
+        //     var entity = new T();
 
-            foreach (var entityPropertyInfo in this.EntityPropertiesInfo)
-            {
-                var propertyMappedTo = mapper?.GetMapping(entityPropertyInfo);
-                var columnName = propertyMappedTo ?? entityPropertyInfo.Name;
+        //     foreach (var entityPropertyInfo in this.EntityPropertiesInfo)
+        //     {
+        //         var propertyMappedTo = mapper?.GetMapping(entityPropertyInfo);
+        //         var columnName = propertyMappedTo ?? entityPropertyInfo.Name;
 
-                var message = messages.FirstOrDefault(m => string.Equals(m.Recipient, columnName, StringComparison.CurrentCultureIgnoreCase));
-                if (message == default(Message)) continue;
+        //         var message = messages.FirstOrDefault(m => string.Equals(m.Recipient, columnName, StringComparison.CurrentCultureIgnoreCase));
+        //         if (message == default(Message)) continue;
 
-                var columnInfo = this.GetColumnInfo(columnName);
+        //         var columnInfo = this.GetColumnInfo(columnName);
 
-                var value = this.GetValue(entityPropertyInfo, columnInfo, message.Body);
-                this.SetValue(entity, entityPropertyInfo.Name, value);
-            }
+        //         var value = this.GetValue(entityPropertyInfo, columnInfo, message.Body);
+        //         this.SetValue(entity, entityPropertyInfo.Name, value);
+        //     }
 
-            return entity;
-        }
+        //     return entity;
+        // }
+
 
         protected virtual void SetValue(object inputObject, string propertyName, object propertyVal)
         {

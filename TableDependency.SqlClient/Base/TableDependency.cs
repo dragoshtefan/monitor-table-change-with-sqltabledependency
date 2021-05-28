@@ -45,11 +45,11 @@ using TableDependency.SqlClient.Base.Utilities;
 
 namespace TableDependency.SqlClient.Base
 {
-    public abstract class TableDependency<T> : ITableDependency<T> where T : class, new()
+    public abstract class TableDependencyType : ITableDependency
     {
         #region Instance Variables
 
-        protected IModelToTableMapper<T> _mapper;
+        // protected IModelToTableMapper<T> _mapper;
         protected CancellationTokenSource _cancellationTokenSource;
         protected string _connectionString;
         protected string _tableName;
@@ -66,6 +66,7 @@ namespace TableDependency.SqlClient.Base
         protected bool _disposed;
         protected string _dataBaseObjectsNamingConvention;
         protected bool _databaseObjectsCreated;
+        protected string _tableKey;
 
         #endregion
 
@@ -79,7 +80,7 @@ namespace TableDependency.SqlClient.Base
         /// <summary>
         /// Occurs when the table content has been changed with an update, insert or delete operation.
         /// </summary>
-        public abstract event ChangedEventHandler<T> OnChanged;
+        public abstract event ChangedEventHandler OnChanged;
 
         /// <summary>
         /// Occurs when SqlTableDependency changes.
@@ -93,7 +94,7 @@ namespace TableDependency.SqlClient.Base
         /// <summary>
         /// Gets the ModelToTableMapper.
         /// </summary>
-        public IModelToTableMapper<T> Mapper => _mapper;
+        // public IModelToTableMapper<T> Mapper => _mapper;
 
         /// <summary>
         /// Gets or sets the trace switch.
@@ -163,18 +164,19 @@ namespace TableDependency.SqlClient.Base
 
         #region Constructors
 
-        protected TableDependency(
+        protected TableDependencyType(
             string connectionString,
+            string key,
             string tableName = null,
             string schemaName = null,
-            IModelToTableMapper<T> mapper = null,
-            IUpdateOfModel<T> updateOf = null,
+            // IModelToTableMapper<T> mapper = null,
+            // IUpdateOfModel<T> updateOf = null,
             ITableDependencyFilter filter = null,
             DmlTriggerType dmlTriggerType = DmlTriggerType.All,
             bool executeUserPermissionCheck = true)
         {
-            if (mapper?.Count() == 0) throw new UpdateOfException("mapper parameter is empty.");
-            if (updateOf?.Count() == 0) throw new UpdateOfException("updateOf parameter is empty.");
+            // if (mapper?.Count() == 0) throw new UpdateOfException("mapper parameter is empty.");
+            // if (updateOf?.Count() == 0) throw new UpdateOfException("updateOf parameter is empty.");
 
             _connectionString = connectionString;
             this.CheckIfConnectionStringIsValid();
@@ -184,6 +186,7 @@ namespace TableDependency.SqlClient.Base
             _schemaName = this.GetSchemaName(schemaName);
             _server = this.GetServerName();
             _database = this.GetDataBaseName();
+            _tableKey = key;
 
             this.CheckIfTableExists();
             this.CheckRdbmsDependentImplementation();
@@ -191,13 +194,13 @@ namespace TableDependency.SqlClient.Base
             var tableColumnList = this.GetTableColumnsList();
             if (!tableColumnList.Any()) throw new TableWithNoColumnsException(_tableName);
 
-            _mapper = mapper ?? ModelToTableMapperHelper<T>.GetModelMapperFromColumnDataAnnotation(tableColumnList);
-            this.CheckMapperValidity(tableColumnList);
+            // _mapper = mapper ?? ModelToTableMapperHelper<T>.GetModelMapperFromColumnDataAnnotation(tableColumnList); // ramane tot null si dupa evaluare
+            // this.CheckMapperValidity(tableColumnList);
 
-            this.CheckUpdateOfCongruenceWithTriggerType(updateOf, dmlTriggerType);
-            _updateOf = this.GetUpdateOfColumnNameList(updateOf, tableColumnList);
+            // this.CheckUpdateOfCongruenceWithTriggerType(updateOf, dmlTriggerType);
+            // _updateOf = this.GetUpdateOfColumnNameList(updateOf, tableColumnList);
 
-            _userInterestedColumns = this.GetUserInterestedColumns(tableColumnList);
+            _userInterestedColumns = tableColumnList;
             if (!_userInterestedColumns.Any()) throw new NoMatchBetweenModelAndTableColumns();
             this.CheckIfUserInterestedColumnsCanBeManaged();
 
@@ -293,30 +296,30 @@ namespace TableDependency.SqlClient.Base
 
         #region Checks
 
-        protected virtual void CheckMapperValidity(IEnumerable<TableColumnInfo> tableColumnsList)
-        {
-            if (_mapper == null || _mapper.Count() < 1) return;
+        // protected virtual void CheckMapperValidity(IEnumerable<TableColumnInfo> tableColumnsList)
+        // {
+        //     if (_mapper == null || _mapper.Count() < 1) return;
 
-            var dbColumnNames = tableColumnsList.Select(t => t.Name.ToLowerInvariant()).ToList();
+        //     var dbColumnNames = tableColumnsList.Select(t => t.Name.ToLowerInvariant()).ToList();
 
-            if (_mapper.GetMappings().Select(t => t.Value).Any(mappingColumnName => !dbColumnNames.Contains(mappingColumnName.ToLowerInvariant())))
-            {
-                throw new ModelToTableMapperException("I cannot find any correspondence between defined ModelToTableMapper properties and database Table columns.");
-            }
-        }
+        //     if (_mapper.GetMappings().Select(t => t.Value).Any(mappingColumnName => !dbColumnNames.Contains(mappingColumnName.ToLowerInvariant())))
+        //     {
+        //         throw new ModelToTableMapperException("I cannot find any correspondence between defined ModelToTableMapper properties and database Table columns.");
+        //     }
+        // }
 
-        protected virtual void CheckUpdateOfCongruenceWithTriggerType(IUpdateOfModel<T> updateOf, DmlTriggerType dmlTriggerType)
-        {
-            if (updateOf == null || updateOf.Count() == 0) return;
+        // protected virtual void CheckUpdateOfCongruenceWithTriggerType(IUpdateOfModel<T> updateOf, DmlTriggerType dmlTriggerType)
+        // {
+        //     if (updateOf == null || updateOf.Count() == 0) return;
 
-            if (!dmlTriggerType.HasFlag(DmlTriggerType.Update) && !dmlTriggerType.HasFlag(DmlTriggerType.All))
-            {
-                if (updateOf.Count() > 0)
-                {
-                    throw new DmlTriggerTypeException("updateOf parameter can be specified only if DmlTriggerType parameter contains DmlTriggerType.Update too, not for DmlTriggerType.Delete or DmlTriggerType.Insert only.");
-                }
-            }
-        }
+        //     if (!dmlTriggerType.HasFlag(DmlTriggerType.Update) && !dmlTriggerType.HasFlag(DmlTriggerType.All))
+        //     {
+        //         if (updateOf.Count() > 0)
+        //         {
+        //             throw new DmlTriggerTypeException("updateOf parameter can be specified only if DmlTriggerType parameter contains DmlTriggerType.Update too, not for DmlTriggerType.Delete or DmlTriggerType.Insert only.");
+        //         }
+        //     }
+        // }
 
         protected abstract void CheckIfUserInterestedColumnsCanBeManaged();
 
@@ -332,95 +335,95 @@ namespace TableDependency.SqlClient.Base
 
         #region Get infos
 
-        protected virtual IEnumerable<TableColumnInfo> GetUserInterestedColumns(IEnumerable<TableColumnInfo> tableColumnsList)
-        {
-            var tableColumnsListFiltered = new List<TableColumnInfo>();
+        // protected virtual IEnumerable<TableColumnInfo> GetUserInterestedColumns(IEnumerable<TableColumnInfo> tableColumnsList)
+        // {
+        //     var tableColumnsListFiltered = new List<TableColumnInfo>();
 
-            foreach (var entityPropertyInfo in ModelUtil.GetModelPropertiesInfo<T>())
-            {
-                var notMappedAttribute = entityPropertyInfo.GetCustomAttribute(typeof(NotMappedAttribute));
-                if (notMappedAttribute != null) continue;
+        //     foreach (var entityPropertyInfo in ModelUtil.GetModelPropertiesInfo<T>())
+        //     {
+        //         var notMappedAttribute = entityPropertyInfo.GetCustomAttribute(typeof(NotMappedAttribute));
+        //         if (notMappedAttribute != null) continue;
 
-                var propertyMappedTo = _mapper?.GetMapping(entityPropertyInfo);
-                var propertyName = propertyMappedTo ?? entityPropertyInfo.Name;
+        //         // var propertyMappedTo = _mapper?.GetMapping(entityPropertyInfo);
+        //         var propertyName = entityPropertyInfo.Name;
 
-                // If model property is mapped to table column keep it
-                foreach (var tableColumn in tableColumnsList)
-                {
-                    if (string.Equals(tableColumn.Name.ToLowerInvariant(), propertyName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (tableColumnsListFiltered.Any(ci => string.Equals(ci.Name, tableColumn.Name, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            throw new ModelToTableMapperException("Your model specify a [Column] attributed Name that has same name of another model property.");
-                        }
+        //         // If model property is mapped to table column keep it
+        //         foreach (var tableColumn in tableColumnsList)
+        //         {
+        //             if (string.Equals(tableColumn.Name.ToLowerInvariant(), propertyName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+        //             {
+        //                 if (tableColumnsListFiltered.Any(ci => string.Equals(ci.Name, tableColumn.Name, StringComparison.OrdinalIgnoreCase)))
+        //                 {
+        //                     throw new ModelToTableMapperException("Your model specify a [Column] attributed Name that has same name of another model property.");
+        //                 }
 
-                        tableColumnsListFiltered.Add(tableColumn);
-                        break;
-                    }
-                }
-            }
+        //                 tableColumnsListFiltered.Add(tableColumn);
+        //                 break;
+        //             }
+        //         }
+        //     }
 
-            return tableColumnsListFiltered;
-        }
+        //     return tableColumnsListFiltered;
+        // }
 
-        protected virtual string GetColumnNameFromModelProperty(IEnumerable<TableColumnInfo> tableColumnsList, string modelPropertyName)
-        {
-            var entityPropertyInfo = ModelUtil.GetModelPropertiesInfo<T>().First(mpf => mpf.Name == modelPropertyName);
+        // protected virtual string GetColumnNameFromModelProperty(IEnumerable<TableColumnInfo> tableColumnsList, string modelPropertyName)
+        // {
+        //     var entityPropertyInfo = ModelUtil.GetModelPropertiesInfo<T>().First(mpf => mpf.Name == modelPropertyName);
 
-            var propertyMappedTo = _mapper?.GetMapping(entityPropertyInfo);
-            var propertyName = propertyMappedTo ?? entityPropertyInfo.Name;
+        //     var propertyMappedTo = _mapper?.GetMapping(entityPropertyInfo);
+        //     var propertyName = propertyMappedTo ?? entityPropertyInfo.Name;
 
-            // If model property is mapped to table column keep it
-            foreach (var tableColumn in tableColumnsList)
-            {
-                if (string.Equals(tableColumn.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-                {
-                    return tableColumn.Name;
-                }
-            }
+        //     // If model property is mapped to table column keep it
+        //     foreach (var tableColumn in tableColumnsList)
+        //     {
+        //         if (string.Equals(tableColumn.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+        //         {
+        //             return tableColumn.Name;
+        //         }
+        //     }
 
-            return modelPropertyName;
-        }
+        //     return modelPropertyName;
+        // }
 
-        protected virtual IList<string> GetUpdateOfColumnNameList(IUpdateOfModel<T> updateOf, IEnumerable<TableColumnInfo> tableColumns)
-        {
-            var updateOfList = new List<string>();
+        // protected virtual IList<string> GetUpdateOfColumnNameList(IUpdateOfModel<T> updateOf, IEnumerable<TableColumnInfo> tableColumns)
+        // {
+        //     var updateOfList = new List<string>();
 
-            if (updateOf == null || updateOf.Count() <= 0) return updateOfList;
+        //     if (updateOf == null || updateOf.Count() <= 0) return updateOfList;
 
-            foreach (var propertyInfo in updateOf.GetPropertiesInfos())
-            {
-                var existingMap = _mapper?.GetMapping(propertyInfo);
-                if (existingMap != null)
-                {
-                    updateOfList.Add(existingMap);
-                    continue;
-                }
+        //     foreach (var propertyInfo in updateOf.GetPropertiesInfos())
+        //     {
+        //         var existingMap = _mapper?.GetMapping(propertyInfo);
+        //         if (existingMap != null)
+        //         {
+        //             updateOfList.Add(existingMap);
+        //             continue;
+        //         }
 
-                var attribute = propertyInfo.GetCustomAttribute(typeof(ColumnAttribute));
-                if (attribute != null)
-                {
-                    var dbColumnName = ((ColumnAttribute)attribute).Name;
-                    if (!string.IsNullOrWhiteSpace(dbColumnName))
-                    {
-                        updateOfList.Add(dbColumnName);
-                        continue;
-                    }
+        //         var attribute = propertyInfo.GetCustomAttribute(typeof(ColumnAttribute));
+        //         if (attribute != null)
+        //         {
+        //             var dbColumnName = ((ColumnAttribute)attribute).Name;
+        //             if (!string.IsNullOrWhiteSpace(dbColumnName))
+        //             {
+        //                 updateOfList.Add(dbColumnName);
+        //                 continue;
+        //             }
 
-                    dbColumnName = GetColumnNameFromModelProperty(tableColumns, propertyInfo.Name);
-                    updateOfList.Add(dbColumnName);
-                    continue;
-                }
+        //             dbColumnName = GetColumnNameFromModelProperty(tableColumns, propertyInfo.Name);
+        //             updateOfList.Add(dbColumnName);
+        //             continue;
+        //         }
 
-                updateOfList.Add(propertyInfo.Name);
-            }
+        //         updateOfList.Add(propertyInfo.Name);
+        //     }
 
-            return updateOfList;
-        }
+        //     return updateOfList;
+        // }
 
         protected abstract IEnumerable<TableColumnInfo> GetTableColumnsList();
 
-        protected abstract string GetBaseObjectsNamingConvention();
+    protected abstract string GetBaseObjectsNamingConvention();
 
         protected abstract string GetDataBaseName();
 
@@ -428,25 +431,24 @@ namespace TableDependency.SqlClient.Base
 
         protected abstract string GetTableName(string tableName);
 
-        protected virtual string GetTableNameFromDataAnnotation()
-        {
-            var attribute = typeof(T).GetTypeInfo().GetCustomAttribute(typeof(TableAttribute));
-            return ((TableAttribute)attribute)?.Name;
-        }
+        // protected virtual string GetTableNameFromDataAnnotation()
+        // {
+        //     var attribute = typeof(T).GetTypeInfo().GetCustomAttribute(typeof(TableAttribute));
+        //     return ((TableAttribute)attribute)?.Name;
+        // }
 
         protected abstract string GetSchemaName(string schemaName);
 
-        protected virtual string GetSchemaNameFromDataAnnotation()
-        {
-            var attribute = typeof(T).GetTypeInfo().GetCustomAttribute(typeof(TableAttribute));
-            return ((TableAttribute)attribute)?.Schema;
-        }
+        // protected virtual string GetSchemaNameFromDataAnnotation()
+        // {
+        //     var attribute = typeof(T).GetTypeInfo().GetCustomAttribute(typeof(TableAttribute));
+        //     return ((TableAttribute)attribute)?.Schema;
+        // }
 
-        protected virtual RecordChangedEventArgs<T> GetRecordChangedEventArgs(MessagesBag messagesBag)
+        protected virtual RecordChangedEventArgs GetRecordChangedEventArgs(MessagesBag messagesBag)
         {
-            return new RecordChangedEventArgs<T>(
+            return new RecordChangedEventArgs(
                 messagesBag,
-                _mapper,
                 _userInterestedColumns,
                 _server,
                 _database,
@@ -502,7 +504,7 @@ namespace TableDependency.SqlClient.Base
             {
                 try
                 {
-                    dlg.GetMethodInfo().Invoke(dlg.Target, new object[] { this, this.GetRecordChangedEventArgs(messagesBag) });
+                    dlg.GetMethodInfo().Invoke(dlg.Target, new object[] { this, this.GetRecordChangedEventArgs(messagesBag), this._tableName, this._tableKey});
                 }
                 catch (NoMatchBetweenModelAndTableColumns)
                 {
@@ -519,7 +521,7 @@ namespace TableDependency.SqlClient.Base
 
         #region Database object generation/disposition
 
-        protected abstract IList<string> CreateDatabaseObjects(int timeOut, int watchDogTimeOut);
+        public abstract IList<string> CreateDatabaseObjects();
 
         protected abstract void DropDatabaseObjects();
 
@@ -550,7 +552,7 @@ namespace TableDependency.SqlClient.Base
             _disposed = true;
         }
 
-        ~TableDependency()
+        ~TableDependencyType()
         {
             this.Dispose(false);
         }
