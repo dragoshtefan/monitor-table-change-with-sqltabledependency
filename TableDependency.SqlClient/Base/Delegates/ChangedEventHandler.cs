@@ -28,5 +28,5 @@ using TableDependency.SqlClient.Base.EventArgs;
 
 namespace TableDependency.SqlClient.Base.Delegates
 {
-    public delegate void ChangedEventHandler(object sender, RecordChangedEventArgs e, string tableName, string tableKey);
+    public delegate void ChangedEventHandler(object sender, RecordChangedEventArgs e, string schema, string tableName, string tableKey);
 }

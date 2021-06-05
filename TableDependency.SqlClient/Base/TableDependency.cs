@@ -167,6 +167,7 @@ namespace TableDependency.SqlClient.Base
         protected TableDependencyType(
             string connectionString,
             string key,
+            string modexCustomLabel,
             string tableName = null,
             string schemaName = null,
             // IModelToTableMapper<T> mapper = null,
@@ -204,7 +205,8 @@ namespace TableDependency.SqlClient.Base
             if (!_userInterestedColumns.Any()) throw new NoMatchBetweenModelAndTableColumns();
             this.CheckIfUserInterestedColumnsCanBeManaged();
 
-            _dataBaseObjectsNamingConvention = this.GetBaseObjectsNamingConvention();
+            var name = $"{_schemaName}_{_tableName}";
+            _dataBaseObjectsNamingConvention = $"{name}_{modexCustomLabel}";
             _dmlTriggerType = dmlTriggerType;
             _filter = filter;
         }
@@ -423,7 +425,7 @@ namespace TableDependency.SqlClient.Base
 
         protected abstract IEnumerable<TableColumnInfo> GetTableColumnsList();
 
-    protected abstract string GetBaseObjectsNamingConvention();
+    // protected abstract string GetBaseObjectsNamingConvention();
 
         protected abstract string GetDataBaseName();
 

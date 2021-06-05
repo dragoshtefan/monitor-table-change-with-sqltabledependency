@@ -130,8 +130,9 @@ namespace TableDependency.SqlClient
         /// <param name="notifyOn">The notify on Insert, Delete, Update operation.</param>
         /// <param name="executeUserPermissionCheck">if set to <c>true</c> [skip user permission check].</param>
         /// <param name="includeOldValues">if set to <c>true</c> [include old values].</param>
-        public SqlTableDependency(
+        public SqlTableDependency(            
             string connectionString,
+            string CustomModexLabel,
             string tableName = null,
             string key = "Id",
             string schemaName = null,
@@ -140,7 +141,7 @@ namespace TableDependency.SqlClient
             ITableDependencyFilter filter = null,
             DmlTriggerType notifyOn = DmlTriggerType.All,
             bool executeUserPermissionCheck = true,
-            bool includeOldValues = false) : base(connectionString, key, tableName, schemaName, filter, notifyOn, executeUserPermissionCheck)
+            bool includeOldValues = false) : base(connectionString, key, CustomModexLabel, tableName, schemaName, filter, notifyOn, executeUserPermissionCheck)
         {
             this.IncludeOldValues = includeOldValues;
         }
@@ -361,11 +362,11 @@ namespace TableDependency.SqlClient
             return processableMessages;
         }
 
-        protected override string GetBaseObjectsNamingConvention()
-        {
-            var name = $"{_schemaName}_{_tableName}";
-            return $"{name}_STDbyModex";
-        }
+        // protected override string GetBaseObjectsNamingConvention()
+        // {
+        //     var name = $"{_schemaName}_{_tableName}";
+        //     return $"{name}_STDbyModex";
+        // }
 
         protected override void DropDatabaseObjects()
         {
